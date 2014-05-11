@@ -62,7 +62,7 @@ int ReadFile(char* inputFile, int &arrayDimension){
 	int ret_code;
 	fseek(fptr, 10, SEEK_SET);
 	long int offset; //początkowy adres bitow w tabeli pikseli
-	ret_code = fread(&offset, 1, 4, fptr);
+	ret_code = fread(&offset, 4, 1, fptr);
 
 	/*Sprawdzanie wymiarów pliku wejściowego*/
 	long int biWidth;
@@ -70,10 +70,27 @@ int ReadFile(char* inputFile, int &arrayDimension){
 	ret_code = fread(&biWidth, 1, 4, fptr);
 	long int biHeight;
 	ret_code = fread(&biHeight, 1, 4, fptr);
-	if (biHeight != biWidth){
-		printf("Plik wejściowy powinien mieć wymiar nxn");
+        
+        int planes;
+        fread(&planes,1,2,fptr);
+        printf("planes = %d\n",planes);
+        int bitsPerPixel;
+        fread(&bitsPerPixel,1,2,fptr);
+        printf("Bits per Pixel= %d\n", bitsPerPixel);
+        long int compression;
+        fread(&compression,1,4,fptr);
+        printf("Compression = %d\n",compression);
+        long int imageSize;
+        fread(&imageSize,1,4,fptr);
+        printf("Image Size= %d\n", imageSize);
+	
+        
+        
+        if (biHeight != biWidth){
+		printf("UWAGA!: Plik wejściowy powinien mieć wymiar nxn");
 		return 111;
 	}
+  
 	else{
 		arrayDimension = biHeight;
 		allocArray(&inputArray, arrayDimension);
@@ -81,10 +98,10 @@ int ReadFile(char* inputFile, int &arrayDimension){
 		/*W plikach bmp wielkość wiersza jest zawsze zaokrąglana do 4
 		bajtow więc obliczam ile zer zostanie dopisancyh na koncu
 		każdego wiersza*/
-		if ((remain=arrayDimension % 4 )!= 0){ remain = 4 - remain; }
+		if ((remain=((arrayDimension*3)% 4 ))!= 0){ remain = 4 - remain; }
 		else{ remain = 0; }
 
-		printf("reszta z dzielenia przez 4 : %d\n", remain);
+		printf("Reszta z dzielenia przez 4 = %d\n", remain);
 		
 		/*Ustawiam wskaźnik pliku na początek mapy bitowej*/
 		printf("biHeight: %d\n", biHeight);
@@ -100,7 +117,7 @@ int ReadFile(char* inputFile, int &arrayDimension){
 				int tmp = (int)fgetc(fptr);
 				tmp += (int)fgetc(fptr);
 				tmp += (int)fgetc(fptr);
-				if (tmp!=765){
+				if (tmp!=765){ //jeżeli punkt nie jest całkowicie biały to jest czarny
 					inputArray[i][j] = true;
 					//printf(" 1 ");
 				}
@@ -110,16 +127,24 @@ int ReadFile(char* inputFile, int &arrayDimension){
 				}
 			}
 			if (remain != 0){
-				fseek(fptr, (3*remain), SEEK_CUR);
+                            
+				fseek(fptr, remain , SEEK_CUR);
 			}
-			printf("\n\n");
+			//printf("\n\n");
 		}
+                char ca;
+                while((ca=fgetc(fptr))!=EOF){
+                    
+                    printf("1%c", &ca);
+                }
 		fclose(fptr);
 		return 0;
 	}
+        
+ 
 }
 
-/* Przetwarzanie tablicy*/
+/* Przetwarzanie tablicy - główny algorytm*/
 
 int ProcessArray(bool** inArr, bool ** outArr){
 	int tmp = 0;
@@ -180,9 +205,9 @@ int SaveArrayToFile(bool **someArr){
 	fwrite(bmpDIBHeader, 1, DIB_head_size, fptr);
 	int black = 0;
 	int white = 255;
-
-	for (int i = 1; i <arrayDimension+1; i++){
-		for (int j = 1; j <arrayDimension+1; j++){
+        int i,j;
+	for (i = 1; i <arrayDimension+1; i++){
+		for (j = 1; j <arrayDimension+1; j++){
 			if (someArr[i][j] == false){
 				fwrite(&white, 1, 1, fptr);
 				fwrite(&white, 1, 1, fptr);
@@ -194,9 +219,7 @@ int SaveArrayToFile(bool **someArr){
 				fwrite(&black, 1, 1, fptr);
 			}
 		}
-		for (int k = 0; k < remain; k++){
-			fwrite(&black, 1, 1, fptr);
-			fwrite(&black, 1, 1, fptr);
+		for (j = 0; j < remain; j++){
 			fwrite(&black, 1, 1, fptr);
 		}
 
