@@ -1,0 +1,2 @@
+all: 
+	g++ Serial.cpp gol.h gol.cpp -o gameol
